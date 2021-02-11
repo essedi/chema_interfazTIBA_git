@@ -68,11 +68,11 @@ public class InterfazTIBA {
     private static String postgresqlDatabaseName = "c_ballester";
     private static String postgresqlUser = "tad";
     private static String postgresqlPassword = "tad";
-    private static String ftpIp = "13.69.139.244";
+    private static String ftpIp = "51.77.235.1";
     private static String ftpPort = "21";
     private static String ftpUser = "cballester";
-    private static String ftpPassword = "NabwR2Wzy7nXe9n";
-
+    private static String ftpPassword = "udfv8NwCOFJsWICb";
+    
     private static String imagePath = "/home/exos/planificador/cbdriver/images/estados/";
 
     private static final File textFile = new File("./tmp/Datos_ChemaBallester_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".txt");
