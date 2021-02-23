@@ -156,7 +156,7 @@ public class InterfazTIBA {
             Connection postgresqlConnection = DriverManager.getConnection(postgresqlUrl);
 
             String selectSql = "SELECT r.codigo, r.expediente_ol, r.numero_contenedor1, r.numero_contenedor2, e.tipo_aux, "
-                    + "v.matricula, e.latitud, e.longitud, to_char(e.f_inicio, 'dd-MM-yyyy'), to_char(e.f_inicio, 'HHmm'), "
+                    + "v.matricula, e.latitud, e.longitud, to_char(e.f_inicio, 'dd-MM-yyyy'), to_char(e.f_inicio, 'HH24MI'), "
                     + "CASE WHEN e.path_imagen IS NULL THEN '' ELSE e.path_imagen END, e.m_estado_ruta_id "
                     + "FROM m_estado_ruta e INNER JOIN g_hoja_ruta r ON e.g_hoja_ruta_id = r.g_hoja_ruta_id "
                     + "INNER JOIN m_cliente cli ON cli.m_cliente_id = r.m_cliente_id "
