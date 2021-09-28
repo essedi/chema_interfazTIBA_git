@@ -168,7 +168,10 @@ public class InterfazTIBA {
                     + "FROM m_estado_ruta e2 WHERE e2.g_hoja_ruta_id = e.g_hoja_ruta_id AND e2.enviado_tiba = true);";
             try (Statement st = postgresqlConnection.createStatement(); ResultSet rs = st.executeQuery(selectSql)) {
                 ResultSetMetaData rsmd = rs.getMetaData();
+                int contador = 0;
                 while (rs.next()) {
+                    contador ++;
+                    String numEvento = "Evento" + String.valueOf(contador);
                     String codigo = rs.getString(1);
                     String expedienteOL = rs.getString(2);
                     String numeroCont1 = rs.getString(3);
@@ -188,7 +191,8 @@ public class InterfazTIBA {
                     datos.add(numeroCont1);
                     datos.add(numeroCont2);
                     datos.add(tipoEvento);
-                    ultimosEventos.put(matricula, datos);
+                    datos.add(matricula);
+                    ultimosEventos.put(numEvento, datos);
 
                     if (!tipoEvento.equals("00")) {
                         String[] imagenArray = imagenes.split(";");
@@ -226,7 +230,7 @@ public class InterfazTIBA {
                 try {
                     writer = new BufferedWriter(new FileWriter(textFile, true));
                     writer.append(' ');
-                    writer.append("\"" + u.get(0) + "\";\"" + u.get(1) + "\";\"" + u.get(2) + "\";\"" + u.get(3) + "\";1;\"" + t + "\";"
+                    writer.append("\"" + u.get(0) + "\";\"" + u.get(1) + "\";\"" + u.get(2) + "\";\"" + u.get(3) + "\";1;\"" + u.get(5) + "\";"
                             + posicion.get(0) + ";" + posicion.get(1) + ";" + fecha + ";" + hora + ";\"\"\n");
 
                     writer.close();
