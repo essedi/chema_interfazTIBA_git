@@ -155,7 +155,7 @@ public class InterfazTIBA {
 
             Connection postgresqlConnection = DriverManager.getConnection(postgresqlUrl);
 
-            String selectSql = "SELECT r.codigo, r.expediente_ol, r.numero_contenedor1, r.numero_contenedor2, e.tipo_aux, "
+            String selectSql = "SELECT distinct r.codigo, r.expediente_ol, r.numero_contenedor1, r.numero_contenedor2, e.tipo_aux, "
                     + "v.matricula, e.latitud, e.longitud, to_char(e.f_inicio, 'dd-MM-yyyy'), to_char(e.f_inicio, 'HH24MI'), "
                     + "CASE WHEN e.path_imagen IS NULL THEN '' ELSE e.path_imagen END, e.m_estado_ruta_id "
                     + "FROM m_estado_ruta e INNER JOIN g_hoja_ruta r ON e.g_hoja_ruta_id = r.g_hoja_ruta_id "
@@ -164,6 +164,7 @@ public class InterfazTIBA {
                     + "INNER JOIN m_cabeza c ON c.m_cabeza_id = a.m_cabeza_id "
                     + "INNER JOIN m_vehiculo v ON v.m_vehiculo_id = c.m_vehiculo_id "
                     + "WHERE cli.codigo = '2200' AND tipo_aux IS NOT NULL  AND tipo_aux != '' AND enviado_tiba = false "
+                    + "and a.definitiva = true "
                     + "AND (SELECT (MAX(e2.tipo_aux) IS NULL OR MAX(e2.tipo_aux) < '41') "
                     + "FROM m_estado_ruta e2 WHERE e2.g_hoja_ruta_id = e.g_hoja_ruta_id AND e2.enviado_tiba = true);";
             try (Statement st = postgresqlConnection.createStatement(); ResultSet rs = st.executeQuery(selectSql)) {
@@ -222,7 +223,8 @@ public class InterfazTIBA {
     private static void anyadirEstadosPosicion() {
         ultimosEventos.forEach((t, u) -> {
             if (!u.get(4).equals("41")) {
-                List<String> posicion = getPosicionMovilData(t);
+                // Cambiar método de obtención de posición
+                List<String> posicion = getPosicionMovilData(u.get(5));
                 String fecha = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
                 String hora = LocalTime.now().format(DateTimeFormatter.ofPattern("HHmm"));
 
