@@ -46,6 +46,9 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
+import jcifs.smb.NtlmPasswordAuthentication;
+import jcifs.smb.SmbFile;
+import jcifs.smb.SmbFileInputStream;
 
 import org.jdom2.Document;
 import org.jdom2.Element;
@@ -73,10 +76,14 @@ public class InterfazTIBA {
     private static String ftpUser = "cballester";
     private static String ftpPassword = "udfv8NwCOFJsWICb";
     
+    private static final String POSTGRESQL_URL = "jdbc:postgresql://" + postgresqlIp + ":" + postgresqlPort + "/"
+            + postgresqlDatabaseName + "?user=" + postgresqlUser + "&password=" + postgresqlPassword;
+    
     private static String imagePath = "/home/exos/planificador/cbdriver/images/estados/";
 
     private static final File textFile = new File("./tmp/Datos_ChemaBallester_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".txt");
-
+//    private static final File textFile = new File("\\" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".txt");
+    
     private static final Map<String, List<String>> ultimosEventos = new HashMap<>();
     private static final Map<String, List<String>> imagenesNameFile = new HashMap<>();
 
@@ -122,9 +129,9 @@ public class InterfazTIBA {
         try {
             Properties properties = new Properties();
             properties.load(new FileReader("./config/config.properties"));
-            postgresqlIp = properties.getProperty("ip", "localhost");
+            postgresqlIp = properties.getProperty("ip", "192.168.0.7");
             postgresqlPort = properties.getProperty("port", "5432");
-            postgresqlDatabaseName = properties.getProperty("db", "database");
+            postgresqlDatabaseName = properties.getProperty("db", "c_ballester");
             postgresqlUser = properties.getProperty("user", "tad");
             postgresqlPassword = properties.getProperty("pass", "tad");
             ftpIp = properties.getProperty("ftpIp", "13.69.139.244");
@@ -193,6 +200,8 @@ public class InterfazTIBA {
                     datos.add(numeroCont2);
                     datos.add(tipoEvento);
                     datos.add(matricula);
+                    datos.add(latitud);
+                    datos.add(longitud);
                     ultimosEventos.put(numEvento, datos);
 
                     if (!tipoEvento.equals("00")) {
@@ -212,6 +221,9 @@ public class InterfazTIBA {
                         } catch (IOException ex) {
                             Logger.getLogger(InterfazTIBA.class.getName()).log(Level.SEVERE, null, ex);
                         }
+                    } else {
+                        // Añade el estado al mapa de imágenes aunque el estado sea de tipo 00, para poder actualizar enviado_tiba = true
+                        imagenesNameFile.put(estadoId, new ArrayList<>());  
                     }
                 }
             }
@@ -224,7 +236,8 @@ public class InterfazTIBA {
         ultimosEventos.forEach((t, u) -> {
             if (!u.get(4).equals("41")) {
                 // Cambiar método de obtención de posición
-                List<String> posicion = getPosicionMovilData(u.get(5));
+                //List<String> posicion = getPosicionMovilData(u.get(5));
+                List<String> posicion = getPosicionBBDD(u.get(5));
                 String fecha = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
                 String hora = LocalTime.now().format(DateTimeFormatter.ofPattern("HHmm"));
 
@@ -379,6 +392,7 @@ public class InterfazTIBA {
     }
 
     private static void sendImagesToTiba() {
+        LOGGER.log(Level.INFO, "Entra en función sendImagesToTiba");
         FTPClient ftpClient = new FTPClient();
         try {
 
@@ -389,23 +403,55 @@ public class InterfazTIBA {
             for (String estadoId : imagenesNameFile.keySet()) {
                 for (String imagenName : imagenesNameFile.get(estadoId)) {
                     if (!imagenName.isEmpty()) {
-                        File imageFile = new File(imagePath + imagenName);
+//                        File imageFile = new File(imagePath + imagenName);
+//
+//                        String remoteFile = imageFile.getName();
+//                        InputStream inputStream = new FileInputStream(imageFile);
+//
+//                        FileOutputStream outputStream2 = new FileOutputStream("./enviado_img/" + remoteFile);
+//                        OutputStream outputStream = ftpClient.storeFileStream(remoteFile);
+//                        byte[] bytesIn = new byte[4096];
+//                        int read = 0;
+//
+//                        while ((read = inputStream.read(bytesIn)) != -1) {
+//                            outputStream.write(bytesIn, 0, read);
+//                            outputStream2.write(bytesIn, 0, read);
+//                        }
+//                        inputStream.close();
+//                        outputStream.close();
+//                        outputStream2.close();
+                        
+                        String user = "EXOS";
+                        String pass ="cbdriver@2021";
+                        String sharedFolder="cbdriver/estados/";
+//                        String sharedFolder="cbdriver/medlog/";
+                        String ipAddress = "192.168.0.9";
+                        String imgPath = "smb://" + ipAddress + "/" +sharedFolder+"/" + imagenName;
+                        NtlmPasswordAuthentication auth = new NtlmPasswordAuthentication("",user, pass);
+                        
+                        SmbFile smbFile = new SmbFile(imgPath,auth);  // Creamos SmbFile apuntando al directorio NAS donde están las fotos de las rutas
+                        String smbRemoteFileName = smbFile.getName();   
+                        SmbFileInputStream smbfis = new SmbFileInputStream(smbFile);
+                        
+                        // Opcional os2 (copia local)
+                        FileOutputStream os2 = new FileOutputStream("./enviado_img/" + smbRemoteFileName);
+                        LOGGER.log(Level.INFO, null, "Obtenido el output stream local: " + smbRemoteFileName);
 
-                        String remoteFile = imageFile.getName();
-                        InputStream inputStream = new FileInputStream(imageFile);
+                        // Obligatorio os (copia al FTP)
+                        OutputStream os = ftpClient.storeFileStream(smbRemoteFileName);
+                        LOGGER.log(Level.INFO, null, "Obtenido el output stream del dir FTP: " + imgPath);
+                        
+                        byte[] smbBytesIn = new byte[4096];
+                        int smbRead = 0;
 
-                        FileOutputStream outputStream2 = new FileOutputStream("./enviado_img/" + remoteFile);
-                        OutputStream outputStream = ftpClient.storeFileStream(remoteFile);
-                        byte[] bytesIn = new byte[4096];
-                        int read = 0;
-
-                        while ((read = inputStream.read(bytesIn)) != -1) {
-                            outputStream.write(bytesIn, 0, read);
-                            outputStream2.write(bytesIn, 0, read);
+                        while ((smbRead = smbfis.read(smbBytesIn)) != -1) {
+                            os.write(smbBytesIn, 0, smbRead);
+                            os2.write(smbBytesIn, 0, smbRead);
                         }
-                        inputStream.close();
-                        outputStream.close();
-                        outputStream2.close();
+                        LOGGER.log(Level.INFO, null, "Imágenes guardadas en los directorios FTP y local.");
+                        smbfis.close();
+                        os.close();
+                        os2.close();
                     }
                 }
             }
@@ -413,6 +459,9 @@ public class InterfazTIBA {
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
             ex.printStackTrace();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, null, "Excepcion generica " + e);
+            e.printStackTrace();
         } finally {
              try {
                 if (ftpClient.isConnected()) {
@@ -435,10 +484,55 @@ public class InterfazTIBA {
             for (String estadoId : imagenesNameFile.keySet()) {
                 pst.setString(1, estadoId);
                 pst.addBatch();
+                LOGGER.log(Level.INFO, null, "Enviado TIBA el estado: " + estadoId);
             }
             pst.executeBatch();
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, null, e.getMessage());
         }
+    }
+
+    private static List<String> getPosicionBBDD(String matricula) {
+        List<String> posiciones = new ArrayList<>();
+        
+        try {
+            Connection postgreCon = DriverManager.getConnection(POSTGRESQL_URL);
+
+            // QUITAR LAS RUTAS CUYAS CABEZAS/PLATAFORMAS NO ESTÁN DADAS DE ALTA
+            String selectSql = "SELECT pos.latitud, pos.longitud "
+                    + " FROM m_ultima_posicion_tercero pos "
+                    + " INNER JOIN m_tercero t ON t.m_tercero_id = pos.m_tercero_id "
+                    + " INNER JOIN m_tercero_conductor tc ON tc.m_tercero_id = t.m_tercero_id "
+                    + " INNER JOIN g_asignacion_hoja_ruta a ON a.m_tercero_cond_id = tc.m_tercero_conductor_id "
+                    + " INNER JOIN g_hoja_ruta h ON h.g_hoja_ruta_id = a.g_hoja_ruta_id "
+                    + " INNER JOIN m_cabeza c ON c.m_cabeza_id = a.m_cabeza_id "
+                    + " INNER JOIN m_vehiculo v ON v.m_vehiculo_id = c.m_vehiculo_id"
+                    + " WHERE v.matricula = ? AND a.definitiva AND h.f_planificada_inicio < cast((current_date + 1) as timestamp) "
+                    + " ORDER BY h.f_planificada_llegada DESC LIMIT 1;";
+            
+            try (PreparedStatement ps = postgreCon.prepareStatement(selectSql)) {
+                Logger.getLogger(InterfazTIBA.class.getName()).log(Level.INFO, "Obteniendo posición de la matrícula " + matricula +  ".");
+                ps.setString(1, matricula);
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) {
+                    posiciones.add(rs.getString(1));
+                    posiciones.add(rs.getString(2));
+                }
+                Logger.getLogger(InterfazTIBA.class.getName()).log(Level.INFO, "Posición de la matrícula " + matricula + "obtenida: \n"
+                        + "latitud: " + posiciones.get(0) + ", longitud: " + posiciones.get(1));
+            }
+            
+        } catch (SQLException ex) {
+                Logger.getLogger(InterfazTIBA.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        if (posiciones.isEmpty()) {
+            posiciones.add("");
+            posiciones.add("");
+            Logger.getLogger(InterfazTIBA.class.getName()).log(Level.WARNING, "Error al obtener la posición.");
+
+        }
+        return posiciones;
     }
 }
