@@ -158,8 +158,8 @@ public class InterfazTIBA {
                     + "WHERE cli.codigo = '2200' AND tipo_aux IS NOT NULL  AND tipo_aux != '' AND enviado_tiba = false "
                     + "and a.definitiva = true "
                     + "AND (SELECT (MAX(e2.tipo_aux) IS NULL OR MAX(e2.tipo_aux) < '41') "
-                    + "FROM m_estado_ruta e2 WHERE e2.g_hoja_ruta_id = e.g_hoja_ruta_id AND e2.enviado_tiba = true) "
-                    + "AND  e.tipo_aux =  (SELECT MAX(e3.tipo_aux) FROM m_estado_ruta e3 WHERE e3.g_hoja_ruta_id = e.g_hoja_ruta_id);";
+                    + "FROM m_estado_ruta e2 WHERE e2.g_hoja_ruta_id = e.g_hoja_ruta_id AND e2.enviado_tiba = true); ";
+
             try (Statement st = postgresqlConnection.createStatement(); ResultSet rs = st.executeQuery(selectSql)) {
                 ResultSetMetaData rsmd = rs.getMetaData();
                 int contador = 0;
